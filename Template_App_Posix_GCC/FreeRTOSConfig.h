@@ -204,4 +204,9 @@ extern void vLoggingPrintf( const char * pcFormatString,
 #if ( ipconfigHAS_PRINTF == 1 )
     #define FreeRTOS_printf( X )    vLoggingPrintf X
 #endif
+
+
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE 3000
+
+
 #endif /* FREERTOS_CONFIG_H */

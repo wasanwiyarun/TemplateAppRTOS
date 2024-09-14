@@ -82,6 +82,7 @@
 
 #include <stdio.h>
 #include <pthread.h>
+#include <string.h>
 
 /* Kernel includes. */
 #include "FreeRTOS.h"
@@ -91,6 +92,7 @@
 
 /* Local includes. */
 #include "console.h"
+#include "FreeRTOS_CLI.h"
 
 /* Priorities at which the tasks are created. */
 #define mainQUEUE_RECEIVE_TASK_PRIORITY    ( tskIDLE_PRIORITY + 2 )
@@ -131,14 +133,81 @@ static QueueHandle_t xQueue = NULL;
 static TimerHandle_t xTimer = NULL;
 
 /*-----------------------------------------------------------*/
+static BaseType_t prvTaskStatsCommand( char * pcWriteBuffer,
+                                       size_t xWriteBufferLen,
+                                       const char * pcCommandString )
+{
+    const char * const pcHeader = "Everything is Good\n\@@end@@\r\n";
+
+    /* Remove compile time warnings about unused parameters, and check the
+     * write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+     * write buffer length is adequate, so does not check for buffer overflows. */
+    ( void ) pcCommandString;
+    ( void ) xWriteBufferLen;
+    configASSERT( pcWriteBuffer );
+
+    /* Generate a table of task stats. */
+    strcpy( pcWriteBuffer, pcHeader );
+
+    /* There is no more data to return after this single string, so return
+     * pdFALSE. */
+    return pdFALSE;
+}
+
+static BaseType_t prvLScommand( char * pcWriteBuffer,
+                                       size_t xWriteBufferLen,
+                                       const char * pcCommandString )
+{
+    const char * const pcHeader = "menufacturing.txt config.txt log.txt\n\@@end@@\r\n";
+
+    /* Remove compile time warnings about unused parameters, and check the
+     * write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+     * write buffer length is adequate, so does not check for buffer overflows. */
+    ( void ) pcCommandString;
+    ( void ) xWriteBufferLen;
+    configASSERT( pcWriteBuffer );
+
+    /* Generate a table of task stats. */
+    strcpy( pcWriteBuffer, pcHeader );
+
+    /* There is no more data to return after this single string, so return
+     * pdFALSE. */
+    return pdFALSE;
+}
+
+/* Structure that defines the "task-stats" command line command. */
+static const CLI_Command_Definition_t xTaskStats =
+{
+    "hw",        /* The command string to type. */
+    "\r\nhw:\r\n Displays a table showing the state of hardware device\r\n\r\n",
+    prvTaskStatsCommand, /* The function to run. */
+    0                    /* No parameters are expected. */
+};
+
+static const CLI_Command_Definition_t lsFile =
+{
+    "ls",        /* The command string to type. */
+    "\r\nls:\r\n Displays a table file/files on device\r\n\r\n",
+    prvLScommand, /* The function to run. */
+    0                    /* No parameters are expected. */
+};
+
+void vRegisterCLICommands( void )
+{
+    /* Register all the command line commands defined immediately above. */
+    FreeRTOS_CLIRegisterCommand( &xTaskStats );
+    FreeRTOS_CLIRegisterCommand( &lsFile );
+    
+}
 
 /*** SEE THE COMMENTS AT THE TOP OF THIS FILE ***/
-void main_blinky( void )
+void main_cli_app( void )
 {
     const TickType_t xTimerPeriod = mainTIMER_SEND_FREQUENCY_MS;
+    vRegisterCLICommands();
 
     /* Create the queue. */
-    xQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof( uint32_t ) );
+    xQueue = xQueueCreate( mainQUEUE_LENGTH, 250 );
 
     if( xQueue != NULL )
     {
@@ -152,19 +221,7 @@ void main_blinky( void )
                      NULL );                          /* The task handle is not required, so NULL is passed. */
 
         xTaskCreate( prvQueueSendTask, "TX", configMINIMAL_STACK_SIZE, NULL, mainQUEUE_SEND_TASK_PRIORITY, NULL );
-
-        /* Create the software timer, but don't start it yet. */
-        xTimer = xTimerCreate( "Timer",                     /* The text name assigned to the software timer - for debug only as it is not used by the kernel. */
-                               xTimerPeriod,                /* The period of the software timer in ticks. */
-                               pdTRUE,                      /* xAutoReload is set to pdTRUE. */
-                               NULL,                        /* The timer's ID is not used. */
-                               prvQueueSendTimerCallback ); /* The function executed when the timer expires. */
-
-        if( xTimer != NULL )
-        {
-            xTimerStart( xTimer, 0 );
-        }
-
+        console_print("JoovvFlex_Device# ");
         /* Start the tasks and timer running. */
         vTaskStartScheduler();
     }
@@ -191,20 +248,30 @@ static void prvQueueSendTask( void * pvParameters )
 
     /* Initialise xNextWakeTime - this only needs to be done once. */
     xNextWakeTime = xTaskGetTickCount();
-
+    uint8_t buffer[250] = {0};
+    memset(buffer, 0x00, sizeof(buffer));
+    uint16_t index = 0;
     for( ; ; )
     {
-        /* Place this task in the blocked state until it is time to run again.
-         *  The block time is specified in ticks, pdMS_TO_TICKS() was used to
-         *  convert a time specified in milliseconds into a time specified in ticks.
-         *  While in the Blocked state this task will not consume any CPU time. */
-        vTaskDelayUntil( &xNextWakeTime, xBlockTime );
-
-        /* Send to the queue - causing the queue receive task to unblock and
-         * write to the console.  0 is used as the block time so the send operation
-         * will not block - it shouldn't need to block as the queue should always
-         * have at least one space at this point in the code. */
-        xQueueSend( xQueue, &ulValueToSend, 0U );
+        char c = getchar();
+        if(0xFFFFFFFF != c)
+        {
+            if(0x0A != c)
+            {
+                buffer[index] = c;
+                index++;   
+            }
+            else
+            {
+                xQueueSend( xQueue, &buffer[0], 1000);
+                memset(buffer, 0x00, sizeof(buffer));
+                index = 0;
+            }
+        }
+        else
+        {
+            vTaskDelayUntil( &xNextWakeTime, xBlockTime );
+        }
     }
 }
 /*-----------------------------------------------------------*/
@@ -230,8 +297,9 @@ static void prvQueueSendTimerCallback( TimerHandle_t xTimerHandle )
 
 static void prvQueueReceiveTask( void * pvParameters )
 {
-    uint32_t ulReceivedValue;
-
+    uint8_t buffer_input[250] = {0};
+    uint8_t buffer_output[250] = {0};
+    
     /* Prevent the compiler warning about the unused parameter. */
     ( void ) pvParameters;
 
@@ -241,7 +309,9 @@ static void prvQueueReceiveTask( void * pvParameters )
          * indefinitely provided INCLUDE_vTaskSuspend is set to 1 in
          * FreeRTOSConfig.h.  It will not use any CPU time while it is in the
          * Blocked state. */
-        xQueueReceive( xQueue, &ulReceivedValue, portMAX_DELAY );
+        memset(buffer_input, 0x00, sizeof(buffer_input));
+        
+        xQueueReceive( xQueue, &buffer_input[0], portMAX_DELAY );
 
         /* To get here something must have been received from the queue, but
          * is it an expected value?  Normally calling printf() from a task is not
@@ -249,18 +319,15 @@ static void prvQueueReceiveTask( void * pvParameters )
          * using console IO so it is ok.  However, note the comments at the top of
          * this file about the risks of making Linux system calls (such as
          * console output) from a FreeRTOS task. */
-        if( ulReceivedValue == mainVALUE_SENT_FROM_TASK )
+        int res = 0;
+        do
         {
-            console_print( "Message received from task\n" );
-        }
-        else if( ulReceivedValue == mainVALUE_SENT_FROM_TIMER )
-        {
-            console_print( "Message received from software timer\n" );
-        }
-        else
-        {
-            console_print( "Unexpected message\n" );
-        }
+            res = FreeRTOS_CLIProcessCommand( buffer_input, buffer_output, sizeof(buffer_output) );
+            printf("%s",buffer_output);
+        } while (0 != res);
+        
+        printf("JoovvFlex_Device# ");
+        memset(buffer_input, 0x00, sizeof(buffer_input));       
     }
 }
 /*-----------------------------------------------------------*/

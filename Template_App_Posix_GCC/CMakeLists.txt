@@ -48,6 +48,7 @@ endif()
 
 set( FREERTOS_KERNEL_PATH "../FreeRTOS/FreeRTOS/Source" )
 set( FREERTOS_PLUS_TRACE_PATH "../FreeRTOS/FreeRTOS-Plus/Source/FreeRTOS-Plus-Trace" )
+set( FREERTOS_PLUS_CLI_PATH "../FreeRTOS/FreeRTOS-Plus/Source/FreeRTOS-Plus-CLI" )
 
 # Add the freertos_config for FreeRTOS-Kernel
 add_library( freertos_config INTERFACE )
@@ -56,6 +57,7 @@ target_include_directories( freertos_config
     INTERFACE
         ./
         ./Trace_Recorder_Configuration
+        ${FREERTOS_PLUS_CLI_PATH}/
         ${FREERTOS_PLUS_TRACE_PATH}/include
         ${FREERTOS_PLUS_TRACE_PATH}/kernelports/FreeRTOS/include
 )
@@ -81,40 +83,16 @@ add_executable( template_app
                 code_coverage_additions.c
                 console.c
                 main.c
-                main_blinky.c
-                main_full.c
+                main_cli_app.c
                 run-time-stats-utils.c
+                ${FREERTOS_PLUS_CLI_PATH}/FreeRTOS_CLI.c
                 $<$<NOT:${NO_TRACING}>:${FREERTOS_PLUS_TRACE_SOURCES}>
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/AbortDelay.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/BlockQ.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/blocktim.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/countsem.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/death.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/dynamic.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/EventGroupsDemo.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/flop.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/GenQTest.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/integer.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/IntSemTest.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/MessageBufferAMP.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/MessageBufferDemo.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/PollQ.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/QPeek.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/QueueOverwrite.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/QueueSet.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/QueueSetPolling.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/recmutex.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/semtest.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/StaticAllocation.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/StreamBufferDemo.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/StreamBufferInterrupt.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/TaskNotify.c
-                ${FREERTOS_KERNEL_PATH}/../Demo/Common/Minimal/TimerDemo.c
               )
 
 target_include_directories( template_app
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${FREERTOS_PLUS_CLI_PATH}/
         ${FREERTOS_KERNEL_PATH}/../Demo/Common/include
         ${FREERTOS_PLUS_TRACE_PATH}/Include
         ${FREERTOS_PLUS_TRACE_PATH}/streamports/File/include

@@ -72,20 +72,12 @@
     #include <trcRecorder.h>
 #endif
 
-#define    BLINKY_DEMO    0
-#define    FULL_DEMO      1
+#define    BLINKY_DEMO    1
 
 #ifdef BUILD_DIR
     #define BUILD         BUILD_DIR
 #else
     #define BUILD         "./"
-#endif
-
-/* Demo type is passed as an argument */
-#ifdef USER_DEMO
-    #define     mainSELECTED_APPLICATION    USER_DEMO
-#else /* Default Setting */
-    #define    mainSELECTED_APPLICATION     FULL_DEMO
 #endif
 
 /* This demo uses heap_3.c (the libc provided malloc() and free()). */
@@ -94,6 +86,7 @@
 
 extern void main_blinky( void );
 extern void main_full( void );
+extern void main_cli_app( void );
 static void traceOnEnter( void );
 
 /*
@@ -168,21 +161,9 @@ int main( void )
     #endif /* if ( projENABLE_TRACING == 1 ) */
 
     console_init();
-    #if ( mainSELECTED_APPLICATION == BLINKY_DEMO )
-    {
-        console_print( "Starting echo blinky demo\n" );
-        main_blinky();
-    }
-    #elif ( mainSELECTED_APPLICATION == FULL_DEMO )
-    {
-        console_print( "Starting full demo\n" );
-        main_full();
-    }
-    #else
-    {
-        #error "The selected demo is not valid"
-    }
-    #endif /* if ( mainSELECTED_APPLICATION ) */
+    
+    console_print( "Starting echo blinky demo\n" );
+    main_cli_app();
 
     return 0;
 }
@@ -223,14 +204,6 @@ void vApplicationIdleHook( void )
 
     usleep( 15000 );
     traceOnEnter();
-
-    #if ( mainSELECTED_APPLICATION == FULL_DEMO )
-    {
-        /* Call the idle task processing used by the full demo.  The simple
-         * blinky demo does not use the idle task hook. */
-        vFullDemoIdleFunction();
-    }
-    #endif
 }
 
 /*-----------------------------------------------------------*/
@@ -258,12 +231,6 @@ void vApplicationTickHook( void )
     * added here, but the tick hook is called from an interrupt context, so
     * code must not attempt to block, and only the interrupt safe FreeRTOS API
     * functions can be used (those that end in FromISR()). */
-
-    #if ( mainSELECTED_APPLICATION == FULL_DEMO )
-    {
-        vFullDemoTickHookFunction();
-    }
-    #endif /* mainSELECTED_APPLICATION */
 }
 
 /*-----------------------------------------------------------*/
